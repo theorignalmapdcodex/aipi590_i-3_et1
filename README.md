@@ -1,123 +1,123 @@
+# GPT-2 + SHAP Local Interpretability Analysis
+*By the originalmapdcodex*
 
-# Using SHAP to Generate Local Explanations for Individual Predictions from a Pre-trained Blackbox Model (BERT)
+## Table of Contents
+- [GPT-2 + SHAP Local Interpretability Analysis](#gpt-2--shap-local-interpretability-analysis)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Project Goal](#project-goal)
+  - [Why GPT-2?](#why-gpt-2)
+  - [Installation](#installation)
+  - [Dependencies](#dependencies)
+  - [Project Structure](#project-structure)
+  - [Usage](#usage)
+  - [Key Features](#key-features)
+  - [Analysis Components](#analysis-components)
+  - [Results and Insights](#results-and-insights)
+  - [Limitations and Considerations](#limitations-and-considerations)
+  - [References](#references)
 
 ## Overview
-This project demonstrates how to generate **local explanations** for individual predictions made by a **pre-trained BERT model** using **SHAP (SHapley Additive exPlanations)**. The goal is to understand which words contribute most to BERT’s classification decisions.
+This project implements SHAP (SHapley Additive exPlanations) for analyzing and visualizing the influence of specific words and phrases within paragraph-length text on GPT-2's generation of outputs. The focus is particularly on understanding and identifying potential biases in the model's learned representations and generated text.
 
-## Prerequisites
-Ensure you have the required dependencies installed:
+## Project Goal
+To utilize SHAP for identifying and visualizing how specific words and phrases within paragraph-length text influence GPT-2's generation of biased or unbiased outputs related to nationality, helping understand and potentially mitigate biases present in the model's learned representations.
+
+## Why GPT-2?
+The choice of GPT-2 over alternatives like BERT was made based on specific requirements:
+- Better suited for open-ended generation
+- More effective for generating plausible text
+- Natural choice for tasks focusing on text generation rather than classification
+- Better aligned with the goal of analyzing continuous text generation
+
+## Installation
 ```bash
-pip install transformers shap torch
+pip install transformers shap
 ```
 
-## How It Works
-The script performs the following steps:
+## Dependencies
+- transformers
+- shap
+- torch
+- numpy
+- warnings (for clean output handling)
 
-### 1. **Import Required Libraries**
+## Project Structure
+```
+.
+├── notebooks/
+│   └── gpt2+shap_local_interpretability.ipynb
+├── README.md
+└── requirements.txt
+```
+
+## Usage
+1. Import required libraries:
 ```python
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
+import numpy as np
 import shap
 ```
-- `transformers`: Loads the **pre-trained BERT model** and tokenizer.
-- `torch`: Provides tensor operations for **PyTorch**.
-- `shap`: Generates explanations for model predictions.
 
-### 2. **Load Pre-trained BERT Model and Tokenizer**
+2. Initialize GPT-2 model and tokenizer:
 ```python
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased", use_fast=True)
-model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased")
+tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True)
+model = AutoModelForCausalLM.from_pretrained("gpt2")
 ```
-- Loads **BERT-base-uncased**, a **pre-trained** NLP model for classification.
-- Uses the **fast tokenizer** for efficient text processing.
 
-### 3. **Define a Tokenization Function**
+3. Configure model parameters:
 ```python
-def tokenize_text(text):
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-    return inputs
+model.config.is_decoder = True
+model.config.task_specific_params["text-generation"] = {
+    "do_sample": True,
+    "max_length": 50,
+    "temperature": 0.7,
+    "top_k": 50,
+    "no_repeat_ngram_size": 2,
+}
 ```
-- Tokenizes the input **text** while ensuring:
-  - Padding: Makes all inputs the same length.
-  - Truncation: Shortens long text to fit BERT’s **512-token limit**.
-  - Converts text into **PyTorch tensors**.
 
-### 4. **Create a Wrapper Function for SHAP**
-```python
-def f(x):
-    inputs = tokenizer(x, return_tensors="pt", padding=True, truncation=True, max_length=512)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    return outputs.logits.numpy()
-```
-- Defines `f(x)`, a function that:
-  - **Tokenizes input text.**
-  - **Passes tokens to BERT** and gets model predictions (**logits**).
-  - Converts logits to a **NumPy array** for SHAP.
+## Key Features
+- Local interpretability analysis using SHAP
+- Token-wise contribution analysis
+- Dimension-specific impact assessment
+- Bias detection in text generation
+- Visualization of word influence on model outputs
 
-### 5. **Initialize SHAP Explainer**
-```python
-explainer = shap.Explainer(f, tokenizer)
-```
-- Initializes **SHAP’s Explainer** with:
-  - `f(x)`: Our model inference function.
-  - `tokenizer`: Ensures SHAP understands the input format.
+## Analysis Components
+1. SHAP Value Generation:
+   - Text tokenization
+   - Model prediction
+   - SHAP value calculation
+   - Contribution analysis
 
-### 6. **Define Example Sentences for Analysis**
-```python
-sentence_1 = ["A doctor is examining a patient."]
-sentence_2 = ["A nurse is examining a patient."]
-```
-- Defines **two input sentences** for interpretation.
-- Helps compare how BERT perceives different roles in the same context.
+2. Visualization:
+   - Text plots showing token influence
+   - Dimension-wise contribution analysis
+   - Comparative analysis of different inputs
 
-### 7. **Generate SHAP Values for Local Explanation**
-```python
-shap_values_1 = explainer(sentence_1)
-shap_values_2 = explainer(sentence_2)
-```
-- Computes **SHAP values**, highlighting which words influenced BERT’s prediction in **both sentences**.
+## Results and Insights
+The analysis revealed significant insights about GPT-2's behavior:
+- Different narrative continuations based on subject descriptors
+- Varying levels of detail and context provided
+- Potential biases in medical care and assistance descriptions
+- Strong influence of temporal and event-based tokens
 
-### 8. **Visualize the Explanations**
-#### **SHAP Text Plot**
-```python
-shap.text_plot(shap_values_1)
-shap.text_plot(shap_values_2)
-```
-- Generates **text plots** where important words have higher SHAP values.
-
-#### **SHAP Force Plot**
-```python
-shap.initjs()  # Initialize JS visualization for SHAP
-shap.force_plot(shap_values_1[0])
-shap.force_plot(shap_values_2[0])
-```
-- Provides **interactive force plots** to visualize token-level contributions.
-
-## Running the Notebook
-To execute this project:
-1. Open the notebook `bert_local_interpretability_v2.ipynb`.
-2. Run all the cells to generate explanations.
-3. View the SHAP visualizations of BERT’s decision-making process.
-
-## Example Output
-The output will be **color-coded text and force plots** highlighting how much each word contributes to BERT’s prediction for both sentences.
-
-## Use Cases
-- **Model debugging**: Identify biases or weaknesses in BERT.
-- **Explainable AI (XAI)**: Make NLP predictions more interpretable.
-- **NLP Model Evaluation**: Understand decision-making processes in BERT.
-
-## Future Enhancements
-- Extend support for **fine-tuned BERT models**.
-- Experiment with **LIME** and **Anchors** for comparison.
-- Apply SHAP to **multi-label classification** tasks.
+## Limitations and Considerations
+- Model biases may reflect training data biases
+- Results should be interpreted within the context of the model's limitations
+- Further investigation needed for comprehensive bias mitigation
+- Analysis limited to specific text scenarios and contexts
 
 ## References
-- [SHAP GitHub Repository](https://github.com/shap/shap)
-- [DataCamp Course on Explainable AI](https://campus.datacamp.com/courses/explainable-ai-in-python/model-agnostic-explainability?ex=4)
-
+1. SHAP Documentation. [SHAP Text Examples](https://shap.readthedocs.io/en/latest/text_examples.html#question-answering)
+2. Molnar, C. (2019). *Interpretable Machine Learning: A Guide for Making Black Box Models Explainable*. [Online Book](https://christophm.github.io/interpretable-ml-book/)
+3. Hugging Face. [Transformers Documentation](https://huggingface.co/docs/transformers/model_doc/bert)
+4. DataCamp. [Explainable AI Tutorial](https://www.datacamp.com/tutorial/explainable-ai-understanding-and-trusting-machine-learning-models)
+5. Hugging Face. [API Tokens](https://huggingface.co/settings/tokens)
+6. Google. [Gemini AI](https://deepmind.google/technologies/gemini/)
+   
 ---
-This project provides an **efficient, interpretable** way to analyze **BERT predictions** using SHAP. 🚀
 
-**Author:** Michael Dankwah Agyeman-Prempeh
+📚 **Author:** Michael Dankwah Agyeman-Prempeh [MEng. DTI '25]
