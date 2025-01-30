@@ -120,4 +120,4 @@ The analysis revealed significant insights about GPT-2's behavior:
    
 ---
 
-📚 **Author:** Michael Dankwah Agyeman-Prempeh [MEng. DTI '25]
+📚 **Author of Notebook:** Michael Dankwah Agyeman-Prempeh [MEng. DTI '25]
